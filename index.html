@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>My Feed</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ffffff">
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #111111;
+            --secondary-text: #666666;
+            --accent-color: #007AFF;
+            /* iOS Blue */
+            --card-bg: #ffffff;
+            --border-color: #eeeeee;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #000000;
+                --text-color: #ffffff;
+                --secondary-text: #888888;
+                --card-bg: #1c1c1e;
+                /* iOS Dark Mode Card */
+                --border-color: #333333;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 40px;
+            /* Space for footer */
+        }
+
+        header {
+            padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            background-color: var(--bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background-color: rgba(0, 0, 0, 0.8);
+            }
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--secondary-text);
+            margin-bottom: 15px;
+        }
+
+        /* Filter Tabs */
+        .filters {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--secondary-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border-color: var(--text-color);
+        }
+
+        /* Feed List */
+        .feed-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card:active {
+            background-color: var(--border-color);
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--secondary-text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+        }
+
+        .card-excerpt {
+            font-size: 15px;
+            color: var(--secondary-text);
+            line-height: 1.5;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--secondary-text);
+            font-size: 12px;
+        }
+
+        /* Animation for filtering */
+        .hidden {
+            display: none;
+        }
+
+        /* Tag Styles */
+        .tag {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .tag-flash {
+            background-color: #FF9500;
+        }
+
+        .tag-short {
+            background-color: #34C759;
+        }
+
+        .tag-deep {
+            background-color: #5856D6;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>My Feed</h1>
+        <div class="subtitle">Updated: <span id="last-updated">2026-01-17 23:05</span></div>
+
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterFeed('all', this)">All</button>
+            <button class="filter-btn" onclick="filterFeed('flash', this)">⚡️ Flash (<3m)< /button>
+                    <button class="filter-btn" onclick="filterFeed('short', this)">☕️ Short (3-10m)</button>
+                    <button class="filter-btn" onclick="filterFeed('deep', this)">🧠 Deep (>10m)</button>
+        </div>
+    </header>
+
+    <ul class="feed-list" id="feed-container">
+        
+        <li class="card" data-category="flash">
+            <a href="https://www.bbc.com/future/article/20260116-an-elizabethan-mansions-secrets-for-staying-warm" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">An Elizabethan mansion's secrets for staying warm</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://resonantcomputing.org/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Resonant Computing Manifesto</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.quantamagazine.org/why-theres-no-single-best-way-to-store-information-20260116/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Why There's No Single Best Way to Store Information</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://disconnect.blog/escaping-the-trap-of-us-tech-dependence/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Escaping the trap of US tech dependence</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="short">
+            <a href="https://www.theverge.com/gadgets/863503/apple-mac-mini-m4-lg-c5-oled-tv-deal-sale" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 5 min read</span>
+                    <span class="tag tag-short"></span>
+                </div>
+                <h2 class="card-title">The LG C5 and Apple’s M4 Mac Mini are both steeply discounted this weekend</h2>
+                <p class="card-excerpt">Small footprint. Speedy performance. | Image: The Verge Happy Saturday, folks! This week, Best Buy kicked off its so-called “ Winter Sale ,”...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/entertainment/862881/all-you-need-is-kill-review" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">All You Need Is Kill is a dazzling movie with the soul of a video game</h2>
+                <p class="card-excerpt">While Hollywood has repeatedly tried adapting stories from Japanese manga, vanishingly few of them have been as good as Edge of Tomorrow - W...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.caimito.net/en/blog/2025/12/07/the-recurring-dream-of-replacing-developers.html" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The recurring dream of replacing developers</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/games/860917/big-hops-review-pc-nintendo-switch-ps5" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">A cute frog game that remixes Nintendo&#8217;s best</h2>
+                <p class="card-excerpt">While playing Big Hops , a new 3D platformer starring an adorable frog, I kept feeling like I was breaking the game - and, like with The Leg...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/policy/863632/minnesota-walz-trump-sousveillance-ice" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Minnesota wants to win a war of attrition</h2>
+                <p class="card-excerpt">As masked and armed men in combat armor swarmed throughout the Twin Cities, Gov. Tim Walz took to primetime television to ask Minnesotans to...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://techcrunch.com/2026/01/16/italy-investigates-activision-blizzard-for-pushing-in-game-purchases/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Italy investigates Activision Blizzard for pushing in-game purchases</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/tech/862985/asus-zenbook-a16-snapdragon-x2-ces-early-testing-hands-on" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Fear and blogging (and prerelease laptop testing) in Las Vegas</h2>
+                <p class="card-excerpt">During a chaotic multiday event, I found myself working anywhere. And always in a rush. At CES, I did what you're not supposed to do: I brou...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/tech/863614/animal-crossing-3-rip-netflix-cowork-installer" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Our favorite cozy game is back</h2>
+                <p class="card-excerpt">Hi, friends! Welcome to Installer No. 112, your guide to the best and Verge -iest stuff in the world. (If you're new here, welcome, I hope y...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/best-portable-external-storage-drives/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Best External Hard Drive (2026): SSD to Store Data, Video & More</h2>
+                <p class="card-excerpt">Need an ultrafast drive for video editing or a rugged option to back up your photos in the field? We’ve got a solution for every situation.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/paris-hilton-cookware-reddit/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Reddit Has Thoughts on Paris Hilton Cookware. So Do We</h2>
+                <p class="card-excerpt">I put two viral Paris Hilton-branded kitchen products to the test. I have some thoughts.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/best-shows-amazon-prime/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The 24 Best Shows on Amazon Prime, WIRED’s Picks (January 2026)</h2>
+                <p class="card-excerpt">Fallout, The Girlfriend, and The Mighty Nein are just a few of the shows you should be watching on Amazon Prime Video this week.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.bbc.com/culture/article/20260113-hello-hiya-aloha-what-our-greetings-reveal" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The 600-year-old origins of the word 'hello'</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/best-mesh-wifi-routers/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">7 Best Mesh Wi-Fi Systems (2026), Tested in a Tech Reviewer's Home</h2>
+                <p class="card-excerpt">Forget about patchy internet connections and dead spots in the house. These WIRED-tested multiroom mesh systems will get you online in no ti...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/security-news-this-week-us-hackers-reportedly-caused-a-blackout-in-venezuela/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">US Hackers Reportedly Caused a Blackout in Venezuela</h2>
+                <p class="card-excerpt">Plus: AI reportedly caused ICE to send agents into the field without training, Palantir’s app for targeting immigrants gets exposed, and mor...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://tuananh.net/2026/01/15/architecture-for-disposable-systems/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Architecture for Disposable Systems</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://alexharri.com/blog/ascii-rendering" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">ASCII characters are not pixels: a deep dive into ASCII rendering</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/gear-news-of-the-week-kia-shows-off-the-ev2-and-fujifilm-debuts-new-instax-cameras/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Gear News of the Week: Kia Shows off the EV2, and Fujifilm Debuts New Instax Cameras</h2>
+                <p class="card-excerpt">Plus: Fender rebrands its PreSonus music production app, Ricoh unveils a monochrome camera, and Omega has a new Speedmaster.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theregister.com/2026/01/16/patch_tuesday_secure_launch_bug_no_shutdown/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">PCs refuse to shut down after Microsoft patch</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/gallery/the-best-mattresses-for-back-pain/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Best Mattress for Back Pain: 7 Top Options We Tested (2025)</h2>
+                <p class="card-excerpt">Struggling with back pain while you sleep or when you wake up in the morning? These mattresses can help with that.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.doom2.net/doom2/cheating.html" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">An explanation of cheating in Doom2 Deathmatch (1999)</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://electrek.co/2026/01/16/us-electricity-demand-surged-in-2025-solar-handled-61-percent/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">US electricity demand surged in 2025 – solar handled 61% of it</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://github.com/originalankur/maptoposter" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Map To Poster – Create Art of your favourite city</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/the-16-best-evs-coming-in-2026/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The 16 Best EVs Coming in 2026</h2>
+                <p class="card-excerpt">We’re expecting fresh electrics from Rivian, Hyundai, Honda, BMW, and newcomer Slate, among others. Here are the EVs arriving this year that...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://dsifry.github.io/goodtogo/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Show HN: I built a tool to assist AI agents to know when a PR is good to go</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://langfuse.com/blog/joining-clickhouse" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">ClickHouse acquires Langfuse</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/reviews/863910/tcl-playcube-portable-projector-review-battery" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">TCL’s PlayCube projector is more fun than a Rubik’s Cube</h2>
+                <p class="card-excerpt">Twisting the PlayCube angles the image without a tripod. The best all-in-one portable projector is the one that makes all the right compromi...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://github.com/PABannier/WSIStreamer" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Show HN: Streaming gigabyte medical images from S3 without downloading them</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theguardian.com/technology/2026/jan/17/vastaamo-hack-finland-therapy-notes" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The 'untouchable hacker god' behind Finland's biggest crime</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/petlibro-discount-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Petlibro Discount Codes and Deals: Save Up to 50%</h2>
+                <p class="card-excerpt">Save on Petlibro essentials, including automatic feeders, water fountains, and accessories to keep cats and dogs fed, hydrated, and comforta...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://eugeneyan.com/writing/counterfactual-evaluation/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Counterfactual evaluation for recommendation systems</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://neodyme.io/en/blog/drone_hacking_part_1/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Drone Hacking Part 1: Dumping Firmware and Bruteforcing ECC</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/thinking-machines-lab-cofounder-office-relationship-firing-openai/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Thinking Machines Cofounder’s Office Relationship Preceded His Termination</h2>
+                <p class="card-excerpt">Leaders at Mira Murati’s startup believe Barret Zoph engaged in an incident of “serious misconduct.” The details are now coming to light.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="short">
+            <a href="https://www.theverge.com/22399419/apple-macbook-air-pro-mac-mini-imac-deals" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 6 min read</span>
+                    <span class="tag tag-short"></span>
+                </div>
+                <h2 class="card-title">The best deals on MacBooks right now</h2>
+                <p class="card-excerpt">The 15-inch MacBook Air offers better speakers than its 13-inch sibling, but is otherwise similar. Apple currently sells MacBooks equipped w...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://bfl.ai/blog/flux2-klein-towards-interactive-visual-intelligence" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">FLUX.2 [Klein]: Towards Interactive Visual Intelligence</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/the-campaign-to-destroy-renee-good/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Campaign to Destroy Renee Good</h2>
+                <p class="card-excerpt">After an ICE agent shot and killed the Minneapolis mother, conservative media launched an all-out attack on her reputation. Her identity as ...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/news/863710/google-search-antitrust-monopoly-appeal" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Google is appealing a judge’s search monopoly ruling</h2>
+                <p class="card-excerpt">Google is appealing a federal court's decision ruling it an illegal online search monopolist. The company filed a notice to appeal on Friday...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/jackery-explorer-300-plus-deal-126/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Our Favorite Compact Power Station Is on Sale for 33% Off</h2>
+                <p class="card-excerpt">This little power station can keep your stuff topped up, plus you can save some cash on solar panels.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.theverge.com/news/863620/data-centers-ai-power-auction-trump" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>The Verge • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Trump and Mid-Atlantic governors want tech companies to pay for new power plants</h2>
+                <p class="card-excerpt">An Amazon Web Services data center in Ashburn, Virginia, US, on Tuesday, Oct. 28, 2025. | Photo: Getty Images The Trump administration and a...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/openai-testing-ads-us/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Ads Are Coming to ChatGPT. Here’s How They’ll Work</h2>
+                <p class="card-excerpt">OpenAI says ads will not influence ChatGPT’s responses, and that it won’t sell user data to advertisers.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://en.wikipedia.org/wiki/East_Germany_balloon_escape" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">East Germany balloon escape</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/former-usds-leaders-launch-tech-reform-project-doge/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Former USDS Leaders Launch Tech Reform Project to Fix What DOGE Broke</h2>
+                <p class="card-excerpt">The plan, which is still in its early stages, is spearheaded by former USDS administrator Mikey Dickerson.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">6-Day and IP Address Certificates Are Generally Available</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://embedding-shapes.github.io/cursor-implied-success-without-evidence/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Cursor's latest “browser experiment” implied success without evidence</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://astro.build/blog/joining-cloudflare/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Cloudflare acquires Astro</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.astralcodexten.com/p/the-dilbert-afterlife" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Dilbert Afterlife</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/made-in-china-chinese-time-of-my-life/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Why Everyone Is Suddenly in a ‘Very Chinese Time’ in Their Lives</h2>
+                <p class="card-excerpt">The viral meme isn’t really about China or actual Chinese people. It's a symbol of what Americans believe their own country has lost.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/gallery/best-wifi-routers/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">9 Best Wi-Fi Routers of 2026 for Working, Gaming, and Streaming</h2>
+                <p class="card-excerpt">Don’t suffer the buffer. These WIRED-tested home routers will deliver reliable internet across your home, whatever your needs or budget.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/do-you-need-a-smart-plug/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Smart Plug Guide (2026): When You Should and Shouldn’t Use One</h2>
+                <p class="card-excerpt">Smart plugs can add controls to any outlet, but they aren’t perfect for everything. Here’s our guide to using one and which ones to buy.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/how-does-the-hive-mind-work-in-pluribus/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">How Does the Hive Mind Work in ‘Pluribus?</h2>
+                <p class="card-excerpt">The “Joining” seems to connect people via radio waves. Let’s dig into the physics at play.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/review/dji-action-6/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">DJI Action 6 Review: The Best Action Camera Is Now Better</h2>
+                <p class="card-excerpt">DJI's new action camera brings a larger sensor, a variable aperture lens, 8K video, interchangeable lenses, and more.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/rfk-jr-says-hes-ending-the-war-on-protein-it-doesnt-exist/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">RFK Jr. Says He’s Ending the War on Protein. It Doesn’t Exist</h2>
+                <p class="card-excerpt">There is no war on protein. But pretending there is goes hand-in-hand with the Trump administration’s appeal to traditional masculinity.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/brooks-promo-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">20% Off Brooks Promo Code & Deals for January 2026</h2>
+                <p class="card-excerpt">Enjoy 20% off your first order with a Brooks coupon code, plus top discounts and deals on our favorite Brooks running shoes.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/vistaprint-coupon-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">30% VistaPrint Coupon & Promo Codes | January 2026</h2>
+                <p class="card-excerpt">From personalized gifts to business essentials, WIRED can help you save with our selection of VistaPrint promo codes.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/vimeo-promo-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Vimeo Promo Codes and Deals: Save Up to 40%</h2>
+                <p class="card-excerpt">Enjoy 25% off a membership, 40% off, plus an additional 10% off annual plans, and more deals to save at Vimeo.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/att-promo-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">AT&T Promo Codes and Bundle Deals: Save $50 in January</h2>
+                <p class="card-excerpt">Whether you’re looking to upgrade your internet or get the latest phone, we’ve got you covered with our selection of AT&T coupons and deals.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/altra-promo-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Altra Promo Codes: Get 10% Off Plus Free Shipping</h2>
+                <p class="card-excerpt">Score big savings on Altra Running shoes with up to 50% off sale styles, 20% off select models, 10% off your first order when you sign up, p...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/nordvpn-coupon/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">NordVPN Coupons and Deals: 77% Off in January 2026</h2>
+                <p class="card-excerpt">Save up to 77% on 2-year plans and get 3 free months with our NordVPN discount codes.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/paramount-plus-coupon-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Paramount Plus Coupon Codes and Deals: 50% Off</h2>
+                <p class="card-excerpt">Save on streaming with the latest Paramount+ promo codes and deals, including 50% off subscriptions, free trials, and more.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/adidas-promo-code/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">15% Off Adidas Promo Code | January 2026</h2>
+                <p class="card-excerpt">Save 15% or 30% with Adidas promo codes, plus explore January deals for 40% off trendy sneakers.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/metas-layoffs-supernatural-fitness-users/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Meta’s Layoffs Leave Supernatural Fitness Users in Mourning</h2>
+                <p class="card-excerpt">Users of the VR fitness service are distraught that Supernatural has had its staff cut and won’t receive any more content updates. They’re a...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/nolah-evolution-hybrid-mattress-sale-2026/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Take an Extra $50 Off My Favorite Mattress With This Code</h2>
+                <p class="card-excerpt">Nolah's Evolution is the mattress I personally sleep on as a certified sleep coach, and it's on sale pre-Presidents' Day.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/inside-openai-raid-on-thinking-machines-lab/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Inside OpenAI’s Raid on Thinking Machines Lab</h2>
+                <p class="card-excerpt">OpenAI is planning to bring over more researchers from Thinking Machines Lab after nabbing two cofounders, a source familiar with the situat...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/best-movies-hulu-right-now/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The 45 Best Movies on Hulu, WIRED's Picks (January 2026)</h2>
+                <p class="card-excerpt">Together, The Toxic Avenger, and Heat are just a few of the movies you need to watch on Hulu right now.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/elon-musks-grok-undressing-problem-isnt-fixed/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Elon Musk’s Grok ‘Undressing’ Problem Isn’t Fixed</h2>
+                <p class="card-excerpt">X has placed more restrictions on Grok’s ability to generate explicit AI images, but tests show that the updates have created a patchwork of...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/oneplus-watch-3-deal-126/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Save $50 on the OnePlus Watch 3, Which Has Revolutionary Battery Tech</h2>
+                <p class="card-excerpt">Save some cash on this Wear OS smartwatch with a revolutionary battery that can go for five days on a charge (16 days on low-power mode).</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/why-ice-can-kill-with-impunity/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Why ICE Can Kill With Impunity</h2>
+                <p class="card-excerpt">Over the past decade, US immigration agents have shot and killed more than two dozen people. Not a single agent appears to have faced crimin...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/openai-invests-in-sam-altmans-new-brain-tech-startup-merge-labs/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">OpenAI Invests in Sam Altman’s New Brain-Tech Startup Merge Labs</h2>
+                <p class="card-excerpt">Merge Labs has emerged from stealth with $252 million in funding from OpenAI and others. It aims to use ultrasound to read from and write to...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/california-and-new-york-are-next/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Minnesota Is Just the Beginning. California and New York Are ‘Next’</h2>
+                <p class="card-excerpt">The Trump administration appears to be planning to leverage the same playbook used in Minnesota to go after other blue states.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/anthropic-claude-cowork-agent/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Hands On With Anthropic’s Claude Cowork, an AI Agent That Actually Works</h2>
+                <p class="card-excerpt">Cowork is a user-friendly version of Anthropic’s Claude Code AI-powered tool that’s built for file management and basic computing tasks. Her...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://nanonets.com/cookbooks/structured-llm-outputs" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">LLM Structured Outputs Handbook</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/gallery/best-packing-cubes/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Best Packing Cubes for Every Kind of Trip (2026), Tested and Reviewed</h2>
+                <p class="card-excerpt">Whether you’re a no-frills backpacker or a bag-checking fashionista, there’s a perfect packing cube out there for you.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/gallery/best-smartwatches/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">11 Best Smartwatches (2026): Apple, Wear OS, Hybrid & Kids’ Watches</h2>
+                <p class="card-excerpt">These WIRED-tested wearables reduce your reliance on a phone while keeping you connected.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/gallery/best-blind-boxes/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">9 Best Blind Boxes—Bag Charms, Plush Pendants, and More (2026)</h2>
+                <p class="card-excerpt">In the market for a mystery treat? There’s more out there than Labubu. We bought a bunch of blind boxes online, and these are our favorites.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/former-cisa-director-jen-easterly-will-lead-rsa-conference/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Former CISA Director Jen Easterly Will Lead RSAC Conference</h2>
+                <p class="card-excerpt">The longtime cybersecurity professional says she’s taking the helm of the legacy security organization at “an inflection point” for tech and...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/what-is-vo2-max/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">What Is VO2 Max? Here’s What You Need to Know About the Longevity Metric (2026)</h2>
+                <p class="card-excerpt">VO2 max can predict cardiorespiratory health and longevity, but only if you understand what the number can and can’t tell you.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/livestream-welcome-to-the-chinese-century/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Livestream: Welcome to the Chinese Century</h2>
+                <p class="card-excerpt">Join our livestream—and pose a question to WIRED’s panel of experts—on China’s dominance, influence, and how it is rewriting the future.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/google-fast-pair-bluetooth-audio-accessories-vulnerability-patches/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Hundreds of Millions of Audio Devices Need a Patch to Prevent Wireless Hacking and Tracking</h2>
+                <p class="card-excerpt">Flaws in how 17 models of headphones and speakers use Google’s one-tap Fast Pair Bluetooth protocol have left devices open to eavesdroppers ...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/the-tea-app-is-back-with-a-new-website/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Tea App Is Back With a New Website</h2>
+                <p class="card-excerpt">Months after major data leaks, the app where women leave Yelp-style reviews about men is relaunching with a new website. It’s not back on iO...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/why-there-arent-enough-electricians-and-plumbers-to-build-ai-data-centers/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">The Real AI Talent War Is for Plumbers and Electricians</h2>
+                <p class="card-excerpt">The AI boom is driving an unprecedented wave of data center construction, but there aren’t enough skilled tradespeople in the US to keep up.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/review/asus-rog-falcata/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Asus ROG Falcata Review: A Split Gaming Keyboard</h2>
+                <p class="card-excerpt">With the looks and speed of a gaming keyboard and the comfort of an ergonomic keyboard, the Falcata is a unique and expensive hybrid for a n...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://bvisness.me/high-level/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">High-Level Is the Goal</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/review/lizn-hearpieces/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Lizn Hearpieces Review: Affordable but Uncomfortable Hearing Aids</h2>
+                <p class="card-excerpt">These odd-looking hearing aids double as solid earbuds, but comfort is a major issue.</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.wired.com/story/wikipedias-existential-threats-have-never-been-greater/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Wired • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Wikipedia’s Existential Threats Feel Greater Than Ever</h2>
+                <p class="card-excerpt">As the free online encyclopedia turns 25, it’s facing political opposition, AI scraping, dwindling volunteers, and a public that may no long...</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://www.freep.com/story/sports/nhl/red-wings/2026/01/12/sergei-fedorov-detroit-red-wings-russian-5/88035492007/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">Sergei Fedorov's Escape from Soviet Union Helped Save Red Wings (2020)</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://labs.ramp.com/rct" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">We Put Claude Code in Rollercoaster Tycoon</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+
+        <li class="card" data-category="flash">
+            <a href="https://nesbitt.io/2026/01/10/16-best-practices-for-reducing-dependabot-noise.html" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: inherit;">
+                <div class="card-meta">
+                    <span>Hacker News • 1 min read</span>
+                    <span class="tag tag-flash"></span>
+                </div>
+                <h2 class="card-title">16 Best Practices for Reducing Dependabot Noise</h2>
+                <p class="card-excerpt">Comments</p>
+            </a>
+        </li>
+        
+    </ul>
+
+    <div class="footer">
+        Built by Aditya • <a href="https://github.com/adityar/feed" style="color: inherit;">Source</a> • <a
+            href="https://github.com/adityar/feed/edit/main/feeds.json" style="color: inherit;">Edit Feeds</a>
+    </div>
+
+    <script>
+        function filterFeed(category, btn) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Filter items
+            const items = document.querySelectorAll('.card');
+            items.forEach(item => {
+                if (category === 'all' || item.dataset.category === category) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+
+</html>

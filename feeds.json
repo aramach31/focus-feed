@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Paul Graham",
+    "url": "http://www.paulgraham.com/rss.html"
+  },
+  {
+    "name": "Hacker News",
+    "url": "https://news.ycombinator.com/rss"
+  },
+  {
+    "name": "The Verge",
+    "url": "https://www.theverge.com/rss/index.xml"
+  },
+  {
+    "name": "Wired",
+    "url": "https://www.wired.com/feed/rss"
+  }
+]

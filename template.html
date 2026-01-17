@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>My Feed</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ffffff">
+
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #111111;
+            --secondary-text: #666666;
+            --accent-color: #007AFF;
+            /* iOS Blue */
+            --card-bg: #ffffff;
+            --border-color: #eeeeee;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #000000;
+                --text-color: #ffffff;
+                --secondary-text: #888888;
+                --card-bg: #1c1c1e;
+                /* iOS Dark Mode Card */
+                --border-color: #333333;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 40px;
+            /* Space for footer */
+        }
+
+        header {
+            padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            background-color: var(--bg-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            header {
+                background-color: rgba(0, 0, 0, 0.8);
+            }
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--secondary-text);
+            margin-bottom: 15px;
+        }
+
+        /* Filter Tabs */
+        .filters {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--secondary-text);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border-color: var(--text-color);
+        }
+
+        /* Feed List */
+        .feed-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card:active {
+            background-color: var(--border-color);
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--secondary-text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+        }
+
+        .card-excerpt {
+            font-size: 15px;
+            color: var(--secondary-text);
+            line-height: 1.5;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--secondary-text);
+            font-size: 12px;
+        }
+
+        /* Animation for filtering */
+        .hidden {
+            display: none;
+        }
+
+        /* Tag Styles */
+        .tag {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .tag-flash {
+            background-color: #FF9500;
+        }
+
+        .tag-short {
+            background-color: #34C759;
+        }
+
+        .tag-deep {
+            background-color: #5856D6;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>My Feed</h1>
+        <div class="subtitle">Updated: <span id="last-updated">{{LAST_UPDATED}}</span></div>
+
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterFeed('all', this)">All</button>
+            <button class="filter-btn" onclick="filterFeed('flash', this)">⚡️ Flash (<3m)< /button>
+                    <button class="filter-btn" onclick="filterFeed('short', this)">☕️ Short (3-10m)</button>
+                    <button class="filter-btn" onclick="filterFeed('deep', this)">🧠 Deep (>10m)</button>
+        </div>
+    </header>
+
+    <ul class="feed-list" id="feed-container">
+        <!-- CONTENT_PLACEHOLDER -->
+    </ul>
+
+    <div class="footer">
+        Built by Aditya • <a href="https://github.com/adityar/feed" style="color: inherit;">Source</a> • <a
+            href="https://github.com/adityar/feed/edit/main/feeds.json" style="color: inherit;">Edit Feeds</a>
+    </div>
+
+    <script>
+        function filterFeed(category, btn) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Filter items
+            const items = document.querySelectorAll('.card');
+            items.forEach(item => {
+                if (category === 'all' || item.dataset.category === category) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+
+</html>
